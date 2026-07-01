@@ -19,7 +19,8 @@
       "invalid_postcode": "Enter a valid Dutch postal code, e.g. 1234AB."
     },
     "abort": {
-      "already_configured": "GLS is already set up. Add more parcels from its options."
+      "already_configured": "GLS is already set up. Add more parcels from its options.",
+      "single_instance_allowed": "GLS is already configured. Only a single instance is supported."
     }
   },
   "options": {

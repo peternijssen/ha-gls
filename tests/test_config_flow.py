@@ -35,15 +35,13 @@ async def test_user_flow_invalid_postcode(hass):
 
 
 async def test_only_one_instance_allowed(hass):
+    """single_config_entry aborts a second flow before the form is shown."""
     MockConfigEntry(domain=DOMAIN, unique_id=DOMAIN).add_to_hass(hass)
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
     )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {CONF_POSTAL_CODE: "1234AB"}
-    )
     assert result["type"] == "abort"
-    assert result["reason"] == "already_configured"
+    assert result["reason"] == "single_instance_allowed"
 
 
 def _hub(parcels: list[dict]) -> MockConfigEntry:

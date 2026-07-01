@@ -19,7 +19,8 @@
       "invalid_postcode": "Voer een geldige Nederlandse postcode in, bijv. 1234AB."
     },
     "abort": {
-      "already_configured": "GLS is al ingesteld. Voeg meer pakketten toe via de opties."
+      "already_configured": "GLS is al ingesteld. Voeg meer pakketten toe via de opties.",
+      "single_instance_allowed": "GLS is al geconfigureerd. Er wordt maar één instantie ondersteund."
     }
   },
   "options": {
