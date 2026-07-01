@@ -1,6 +1,7 @@
 """Coordinator for the GLS parcel tracker integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -151,17 +152,26 @@ def _tracking_url(parcel_no: str | None) -> str | None:
 
 
 def _dimensions(raw: dict) -> dict | None:
-    """Return the canonical dimensions dict (cm) from the raw payload."""
+    """Return the canonical dimensions dict (cm) from the raw payload.
+
+    ``text`` is only formatted when all three sides are known — a partial
+    payload must not yield strings like ``"30 x None x None cm"``. Mirrors
+    DPD's ``_augment_dimensions`` behaviour.
+    """
     length = raw.get("length")
     width = raw.get("width")
     height = raw.get("height")
     if not any(value for value in (length, width, height)):
         return None
+    if length is None or width is None or height is None:
+        text: str | None = None
+    else:
+        text = f"{length} x {width} x {height} cm"
     return {
         "length": length,
         "width": width,
         "height": height,
-        "text": f"{length} x {width} x {height} cm",
+        "text": text,
     }
 
 
@@ -317,25 +327,41 @@ class GlsCoordinator(DataUpdateCoordinator[list[dict]]):
 
     async def _async_update_data(self) -> list[dict]:
         tracked = self._tracked()
+        pairs = [
+            (item[CONF_PARCEL_NO], item[CONF_POSTAL_CODE])
+            for item in tracked
+            if item.get(CONF_PARCEL_NO) and item.get(CONF_POSTAL_CODE)
+        ]
+
+        # Drop cache entries for parcels that were untracked, so the cache
+        # stays bounded to what the user still follows.
+        tracked_numbers = {parcel_no for parcel_no, _ in pairs}
+        self._raw_cache = {
+            k: v for k, v in self._raw_cache.items() if k in tracked_numbers
+        }
+
+        results = await asyncio.gather(
+            *(
+                self._client.async_get_parcel(parcel_no, postal_code)
+                for parcel_no, postal_code in pairs
+            ),
+            return_exceptions=True,
+        )
+
         raws: list[dict] = []
         errors = 0
-
-        for item in tracked:
-            parcel_no = item.get(CONF_PARCEL_NO)
-            postal_code = item.get(CONF_POSTAL_CODE)
-            if not parcel_no or not postal_code:
-                continue
-            try:
-                raw = await self._client.async_get_parcel(parcel_no, postal_code)
-            except (GlsApiError, aiohttp.ClientError) as err:
+        for (parcel_no, _), result in zip(pairs, results):
+            if isinstance(result, BaseException):
+                if not isinstance(result, (GlsApiError, aiohttp.ClientError)):
+                    raise result
                 errors += 1
-                _LOGGER.warning("GLS fetch failed for %s: %s", parcel_no, err)
+                _LOGGER.warning("GLS fetch failed for %s: %s", parcel_no, result)
                 cached = self._raw_cache.get(parcel_no)
                 if cached is not None:
                     raws.append(cached)
                 continue
 
-            if raw is None:
+            if result is None:
                 # 204 — unknown or not yet scanned. Keep prior data if we have
                 # it, otherwise show a pending placeholder so the user still
                 # sees the tracked parcel.
@@ -345,10 +371,10 @@ class GlsCoordinator(DataUpdateCoordinator[list[dict]]):
                 )
                 continue
 
-            self._raw_cache[parcel_no] = raw
-            raws.append(raw)
+            self._raw_cache[parcel_no] = result
+            raws.append(result)
 
-        if tracked and errors == len(tracked) and not raws:
+        if pairs and errors == len(pairs) and not raws:
             raise UpdateFailed("GLS unreachable for all tracked parcels")
 
         include_history = self._include_history
@@ -373,7 +399,11 @@ class GlsCoordinator(DataUpdateCoordinator[list[dict]]):
             if p.get("barcode")
         }
 
-        self.last_success_time = datetime.now(timezone.utc)
+        # Only stamp the diagnostic timestamp when at least one fetch actually
+        # succeeded (or nothing is tracked) — a poll that was served entirely
+        # from cache must not present itself as a successful update.
+        if not pairs or errors < len(pairs):
+            self.last_success_time = datetime.now(timezone.utc)
         return normalized_active
 
     def _fire_change_events(self, parcels: list[dict]) -> None:

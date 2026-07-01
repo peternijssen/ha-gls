@@ -348,3 +348,78 @@ async def test_update_fires_status_changed_event(hass):
 
     assert len(events) == 1
     assert events[0].data["new_status"] == ParcelStatus.OUT_FOR_DELIVERY
+
+
+async def test_update_cached_only_poll_does_not_stamp_last_success(hass):
+    """A poll served entirely from cache must not look like a success."""
+    entry = _entry_with([{CONF_PARCEL_NO: "0085105093278", CONF_POSTAL_CODE: "1234AB"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = _delivered_sample()
+    coordinator = GlsCoordinator(hass, client, entry)
+    await coordinator._async_update_data()
+    stamp = coordinator.last_success_time
+    assert stamp is not None
+
+    client.async_get_parcel.side_effect = GlsApiError(500)
+    await coordinator._async_update_data()  # served from cache
+    assert coordinator.last_success_time == stamp
+
+
+async def test_update_prunes_cache_for_untracked_parcels(hass):
+    entry = _entry_with([{CONF_PARCEL_NO: "0085105093278", CONF_POSTAL_CODE: "1234AB"}])
+    entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_get_parcel.return_value = _delivered_sample()
+    coordinator = GlsCoordinator(hass, client, entry)
+    coordinator._raw_cache["gone"] = {"parcelNo": "gone", "state": 4}
+
+    await coordinator._async_update_data()
+
+    assert "gone" not in coordinator._raw_cache
+    assert "0085105093278" in coordinator._raw_cache
+
+
+async def test_update_fetches_parcels_concurrently(hass):
+    """All tracked parcels are fetched via one gather, not one-by-one."""
+    import asyncio
+
+    entry = _entry_with([
+        {CONF_PARCEL_NO: "1111111111111", CONF_POSTAL_CODE: "1234AB"},
+        {CONF_PARCEL_NO: "0085105093278", CONF_POSTAL_CODE: "1234AB"},
+    ])
+    entry.add_to_hass(hass)
+    in_flight = 0
+    peak = 0
+
+    async def _slow_fetch(no, pc):
+        nonlocal in_flight, peak
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await asyncio.sleep(0)
+        in_flight -= 1
+        return _active_sample(no)
+
+    client = AsyncMock()
+    client.async_get_parcel.side_effect = _slow_fetch
+    coordinator = GlsCoordinator(hass, client, entry)
+
+    await coordinator._async_update_data()
+    assert peak == 2
+
+
+def test_normalize_parcel_partial_dimensions_have_no_text():
+    """A partial dimensions payload must not render 'None' into the text."""
+    sample = _active_sample()
+    sample["width"] = None
+    sample["height"] = None
+    parcel = normalize_parcel(sample)
+    assert parcel["dimensions"]["length"] == 34
+    assert parcel["dimensions"]["text"] is None
+
+
+def test_normalize_parcel_no_dimensions_at_all():
+    sample = _active_sample()
+    sample["length"] = sample["width"] = sample["height"] = None
+    parcel = normalize_parcel(sample)
+    assert parcel["dimensions"] is None
