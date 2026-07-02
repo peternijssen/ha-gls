@@ -14,7 +14,7 @@
       }
     },
     "error": {
-      "cannot_connect": "GLS is niet bereikbaar. Controleer je netwerk.",
+      "cannot_connect": "Kan GLS niet bereiken. Controleer je netwerkverbinding.",
       "invalid_parcel_no": "Dit lijkt geen GLS-pakketnummer of tracking-ID.",
       "invalid_postcode": "Voer een geldige Nederlandse postcode in, bijv. 1234AB."
     },
@@ -40,21 +40,21 @@
           "delivered": {
             "name": "Bezorgde pakketten",
             "data": {
-              "delivered_filter_type": "Bewaren op",
+              "delivered_filter_type": "Filteren op",
               "delivered_filter_amount": "Aantal"
             },
             "data_description": {
-              "delivered_filter_type": "Toon bezorgde pakketten van de laatste X dagen, of bewaar alleen de X meest recente.",
-              "delivered_filter_amount": "Aantal dagen of pakketten om te tonen. De pakketten blijven gevolgd; dit bepaalt alleen de bezorgde-sensor."
+              "delivered_filter_type": "Toon bezorgde pakketten van de afgelopen X dagen, of beperk tot de X meest recente.",
+              "delivered_filter_amount": "Aantal dagen of pakketten om weer te geven."
             }
           },
           "history": {
-            "name": "Statusgeschiedenis",
+            "name": "Pakketgeschiedenis",
             "data": {
               "include_history": "Statusgeschiedenis toevoegen"
             },
             "data_description": {
-              "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele omschrijving). Standaard uit."
+              "include_history": "Voegt een geschiedenis-attribuut per pakket toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
             }
           },
           "polling": {
@@ -63,7 +63,7 @@
               "refresh_interval": "Ververs elke"
             },
             "data_description": {
-              "refresh_interval": "Hoe vaak de integratie GLS controleert op updates. Een langzamer interval is vriendelijker voor de servers van GLS; de standaard van 30 minuten is ruim voldoende voor de meeste pakketten."
+              "refresh_interval": "Hoe vaak de integratie GLS controleert op pakketupdates. Een langzamer interval is vriendelijker voor GLS; de standaard van 30 minuten is ruim voldoende voor de meeste pakketten."
             }
           }
         }

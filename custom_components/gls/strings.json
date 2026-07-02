@@ -40,12 +40,12 @@
           "delivered": {
             "name": "Delivered parcels",
             "data": {
-              "delivered_filter_type": "Keep by",
+              "delivered_filter_type": "Filter by",
               "delivered_filter_amount": "Amount"
             },
             "data_description": {
-              "delivered_filter_type": "Show delivered parcels from the last X days, or keep only the X most recent.",
-              "delivered_filter_amount": "Number of days or parcels to show. The parcels stay tracked; this only controls the delivered sensor."
+              "delivered_filter_type": "Show delivered parcels from the last X days, or limit to the X most recent.",
+              "delivered_filter_amount": "Number of days or parcels to show."
             }
           },
           "history": {
@@ -54,7 +54,7 @@
               "include_history": "Include status history"
             },
             "data_description": {
-              "include_history": "Add a per-parcel history attribute listing each status update (timestamp, status, original description). Off by default."
+              "include_history": "Add a per-parcel history attribute listing each status update (timestamp, status, original text). Off by default."
             }
           },
           "polling": {
@@ -63,7 +63,7 @@
               "refresh_interval": "Refresh every"
             },
             "data_description": {
-              "refresh_interval": "How often the integration checks GLS for updates. A slower interval is gentler on GLS' servers; the default of 30 minutes is plenty for most parcels."
+              "refresh_interval": "How often the integration checks GLS for parcel updates. A slower interval is gentler on GLS's API; the default of 30 minutes is plenty for most parcels."
             }
           }
         }
