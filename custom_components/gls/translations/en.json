@@ -19,8 +19,7 @@
       "invalid_postcode": "Enter a valid Dutch postal code, e.g. 1234AB."
     },
     "abort": {
-      "already_configured": "GLS is already set up. Add more parcels from its options.",
-      "single_instance_allowed": "GLS is already configured. Only a single instance is supported."
+      "already_configured": "A GLS hub for this postal code is already set up."
     }
   },
   "options": {
@@ -36,6 +35,17 @@
             },
             "data_description": {
               "add": "Enter a GLS parcel number or tracking ID to start tracking it. It uses the hub postal code."
+            }
+          },
+          "delivered": {
+            "name": "Delivered parcels",
+            "data": {
+              "delivered_filter_type": "Keep by",
+              "delivered_filter_amount": "Amount"
+            },
+            "data_description": {
+              "delivered_filter_type": "Show delivered parcels from the last X days, or keep only the X most recent.",
+              "delivered_filter_amount": "Number of days or parcels to show. The parcels stay tracked; this only controls the delivered sensor."
             }
           },
           "history": {
@@ -75,7 +85,7 @@
         },
         "postal_code": {
           "name": "Postal code",
-          "description": "Delivery postal code. Defaults to the hub postal code if omitted."
+          "description": "Delivery postal code. Picks the hub when several are set up; otherwise defaults to the only hub."
         }
       }
     },

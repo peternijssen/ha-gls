@@ -32,12 +32,26 @@ _TRACK_SCHEMA = vol.Schema(
 _UNTRACK_SCHEMA = vol.Schema({vol.Required(CONF_PARCEL_NO): cv.string})
 
 
-def _get_entry(hass: HomeAssistant):
-    """Return the single loaded GLS config entry, or raise."""
+def _resolve_entry(hass: HomeAssistant, postal_code: str | None):
+    """Pick the GLS hub to act on.
+
+    With one hub, that hub. With several, the ``postal_code`` argument selects
+    it; if omitted and ambiguous, raise so the caller knows to specify one.
+    """
     entries = hass.config_entries.async_entries(DOMAIN)
     if not entries:
         raise ServiceValidationError("GLS is not set up")
-    return entries[0]
+    if postal_code:
+        target = normalize_postcode(postal_code)
+        for entry in entries:
+            if entry.options.get(CONF_POSTAL_CODE) == target:
+                return entry
+        raise ServiceValidationError(f"No GLS hub for postal code {target}")
+    if len(entries) == 1:
+        return entries[0]
+    raise ServiceValidationError(
+        "Multiple GLS hubs are set up — pass postal_code to choose one"
+    )
 
 
 def async_setup_services(hass: HomeAssistant) -> None:
@@ -46,14 +60,14 @@ def async_setup_services(hass: HomeAssistant) -> None:
         return
 
     async def _track(call: ServiceCall) -> None:
-        entry = _get_entry(hass)
         parcel_no = normalize_parcel_no(call.data[CONF_PARCEL_NO])
+        if not valid_parcel_no(parcel_no):
+            raise ServiceValidationError(f"'{parcel_no}' is not a valid parcel number")
+        entry = _resolve_entry(hass, call.data.get(CONF_POSTAL_CODE))
         postal_code = normalize_postcode(
             call.data.get(CONF_POSTAL_CODE)
             or entry.options.get(CONF_POSTAL_CODE, "")
         )
-        if not valid_parcel_no(parcel_no):
-            raise ServiceValidationError(f"'{parcel_no}' is not a valid parcel number")
         if not valid_postcode(postal_code):
             raise ServiceValidationError(f"'{postal_code}' is not a valid postal code")
 
@@ -66,16 +80,18 @@ def async_setup_services(hass: HomeAssistant) -> None:
         )
 
     async def _untrack(call: ServiceCall) -> None:
-        entry = _get_entry(hass)
         parcel_no = normalize_parcel_no(call.data[CONF_PARCEL_NO])
-        parcels = [
-            p
-            for p in entry.options.get(CONF_PARCELS, [])
-            if p[CONF_PARCEL_NO] != parcel_no
-        ]
-        hass.config_entries.async_update_entry(
-            entry, options={**entry.options, CONF_PARCELS: parcels}
-        )
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            raise ServiceValidationError("GLS is not set up")
+        # Remove the parcel from whichever hub(s) track it.
+        for entry in entries:
+            current = entry.options.get(CONF_PARCELS, [])
+            kept = [p for p in current if p[CONF_PARCEL_NO] != parcel_no]
+            if len(kept) != len(current):
+                hass.config_entries.async_update_entry(
+                    entry, options={**entry.options, CONF_PARCELS: kept}
+                )
 
     hass.services.async_register(
         DOMAIN, SERVICE_TRACK_PARCEL, _track, schema=_TRACK_SCHEMA

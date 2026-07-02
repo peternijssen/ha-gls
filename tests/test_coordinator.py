@@ -7,6 +7,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.gls.api import GlsApiError
 from custom_components.gls.const import (
+    CONF_DELIVERED_FILTER_AMOUNT,
+    CONF_DELIVERED_FILTER_TYPE,
     CONF_PARCEL_NO,
     CONF_PARCELS,
     CONF_POSTAL_CODE,
@@ -221,7 +223,13 @@ def test_sort_parcels_puts_unparseable_last():
 def _entry_with(parcels: list[dict]) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
-        options={CONF_PARCELS: parcels},
+        # Keep-most-recent-100 so the delivered-retention filter never trims
+        # the (old, fixed-date) sample parcels these tests assert on.
+        options={
+            CONF_PARCELS: parcels,
+            CONF_DELIVERED_FILTER_TYPE: "parcels",
+            CONF_DELIVERED_FILTER_AMOUNT: 100,
+        },
         unique_id=DOMAIN,
     )
 
@@ -364,6 +372,42 @@ async def test_update_cached_only_poll_does_not_stamp_last_success(hass):
     client.async_get_parcel.side_effect = GlsApiError(500)
     await coordinator._async_update_data()  # served from cache
     assert coordinator.last_success_time == stamp
+
+
+async def test_delivered_filter_days_and_count(hass):
+    from datetime import timedelta
+
+    from custom_components.gls.const import (
+        CONF_DELIVERED_FILTER_AMOUNT,
+        CONF_DELIVERED_FILTER_TYPE,
+    )
+
+    now = datetime.now(timezone.utc)
+    recent = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    old = (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
+    delivered = [
+        {"barcode": "RECENT", "delivered_at": recent},
+        {"barcode": "OLD", "delivered_at": old},
+    ]
+
+    entry = _entry_with([])
+    entry.add_to_hass(hass)
+    coordinator = GlsCoordinator(hass, AsyncMock(), entry)
+
+    # days: 7-day window drops the 30-day-old one.
+    hass.config_entries.async_update_entry(
+        entry, options={CONF_DELIVERED_FILTER_TYPE: "days", CONF_DELIVERED_FILTER_AMOUNT: 7}
+    )
+    kept = coordinator._apply_delivered_filter(delivered)
+    assert {p["barcode"] for p in kept} == {"RECENT"}
+
+    # parcels: keep only the most recent 1.
+    hass.config_entries.async_update_entry(
+        entry,
+        options={CONF_DELIVERED_FILTER_TYPE: "parcels", CONF_DELIVERED_FILTER_AMOUNT: 1},
+    )
+    kept = coordinator._apply_delivered_filter(delivered)
+    assert kept == delivered[:1]
 
 
 async def test_update_prunes_cache_for_untracked_parcels(hass):

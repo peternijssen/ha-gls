@@ -28,11 +28,17 @@ enters tracking codes themselves, so:
   `entry.options[CONF_POSTAL_CODE]`; the entry starts with an empty
   `CONF_PARCELS` list. Setup does **not** hit the API (the endpoint needs a
   parcel number to say anything).
-- **Single-instance hub.** `single_config_entry: true` in the manifest (HA
-  blocks a second flow before the form), with `unique_id = DOMAIN` +
-  `_abort_if_unique_id_configured` kept as belt-and-braces. One **GLS**
-  device holds every tracked parcel. The services are removed again in
-  `async_unload_entry` (single entry, so nothing else needs them).
+- **Multiple hubs, one per postcode.** `unique_id = <postcode>` +
+  `_abort_if_unique_id_configured`, so the same postcode can't be added
+  twice but different postcodes (home + work) can. Title/device name is
+  **`GLS (<postcode>)`** (postcode read from `entry.options[CONF_POSTAL_CODE]`
+  in each `_build_device_info`) so multiple hubs stay distinguishable —
+  mirrors the account-in-name pattern of the other carriers. (fable had made
+  it single-instance via `single_config_entry`; the user wanted multiple
+  hubs, so that manifest flag is removed.) The `gls.*` services are shared
+  across hubs, so `async_unload_entry` only calls `async_unload_services`
+  when **no other hub is still loaded** — removing them on any unload would
+  break the remaining hubs.
 - **Tracked parcels live in `entry.options[CONF_PARCELS]`** as a list of
   `{parcel_no, postal_code}` dicts. Added three ways, all validated the same
   (`valid_parcel_no` / `normalize_postcode` in `config_flow.py`): the
@@ -122,6 +128,12 @@ enters tracking codes themselves, so:
   costs no extra request); when off, `history` is `None`. `raw_status` on a
   history entry is the Dutch `eventReasonDescr`. It is in
   `_unrecorded_attributes` on the per-parcel sensor.
+- **Delivered retention** — `_apply_delivered_filter` trims `self.delivered`
+  by the `delivered` options section (`days` window or `parcels` count,
+  default 7 days), mirroring the other carriers. **Display-only**: parcels
+  stay tracked and polled; this only controls the delivered sensor. (A
+  per-parcel sensor already disappears on delivery because a delivered parcel
+  leaves `coordinator.data` and the summary sensor removes it.)
 - **Delivery window** = `deliveryStatus.etaTimestampMin` / `etaTimestampMax`
   (only while not delivered).
 - **weight + dimensions are populated** (GLS provides them, unlike DHL).

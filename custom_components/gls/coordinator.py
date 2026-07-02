@@ -14,11 +14,15 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import GlsApiClient, GlsApiError
 from .const import (
+    CONF_DELIVERED_FILTER_AMOUNT,
+    CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
     CONF_PARCEL_NO,
     CONF_PARCELS,
     CONF_POSTAL_CODE,
     CONF_REFRESH_INTERVAL,
+    DEFAULT_DELIVERED_FILTER_AMOUNT,
+    DEFAULT_DELIVERED_FILTER_TYPE,
     DEFAULT_INCLUDE_HISTORY,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
@@ -325,6 +329,30 @@ class GlsCoordinator(DataUpdateCoordinator[list[dict]]):
             )
         )
 
+    def _apply_delivered_filter(self, parcels: list[dict]) -> list[dict]:
+        """Trim the delivered list per the configured retention option.
+
+        ``parcels`` is already sorted newest-first. ``days`` keeps deliveries
+        from the last N days (an unparseable ``delivered_at`` is kept); the
+        ``parcels`` type keeps the N most recent. The parcels stay *tracked*
+        either way — this only controls what the delivered sensor shows.
+        """
+        options = self.config_entry.options
+        filter_type = options.get(
+            CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
+        )
+        amount = int(
+            options.get(CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT)
+        )
+        if filter_type == "days":
+            cutoff = datetime.now(timezone.utc) - timedelta(days=amount)
+            return [
+                p
+                for p in parcels
+                if (dt := _parse_iso(p.get("delivered_at"))) is None or dt >= cutoff
+            ]
+        return parcels[:amount]
+
     async def _async_update_data(self) -> list[dict]:
         tracked = self._tracked()
         pairs = [
@@ -384,8 +412,8 @@ class GlsCoordinator(DataUpdateCoordinator[list[dict]]):
         active = [p for p in normalized if not p["delivered"]]
         delivered = [p for p in normalized if p["delivered"]]
 
-        self.delivered = sort_parcels_by_ts(
-            delivered, "delivered_at", descending=True
+        self.delivered = self._apply_delivered_filter(
+            sort_parcels_by_ts(delivered, "delivered_at", descending=True)
         )
         normalized_active = sort_parcels_by_ts(active, "planned_from")
 

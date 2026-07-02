@@ -64,15 +64,18 @@ delivery postal code yourself, just like the gls-info.nl website.
 That's it — setup only asks for the postal code. It becomes the default for
 parcels you add later, so adding a parcel usually only needs its number.
 
+You can add **multiple hubs** — one per delivery postal code (e.g. home and
+work). Each hub is its own **GLS (postcode)** device with its own parcels.
+
 ### Adding parcels
 
-There is a single **GLS** hub that holds all your tracked parcels. Add them
-any of three ways — new per-parcel sensors appear immediately, no restart or
-manual refresh needed:
+A **GLS** hub holds your tracked parcels. Add them any of three ways — new
+per-parcel sensors appear immediately, no restart or manual refresh needed:
 
 - **Options** — integration card → **Configure** → **Parcels** → **Add a parcel**.
 - **Service** — call `gls.track_parcel` with a `parcel_no` (and optional
-  `postal_code`). `gls.untrack_parcel` removes one.
+  `postal_code`, which picks the hub when you run several). `gls.untrack_parcel`
+  removes one.
 - **Dashboard** — a text field + button that calls the service. See
   [`examples/dashboards/add_parcel_card.yaml`](examples/dashboards/add_parcel_card.yaml).
 
@@ -82,11 +85,12 @@ them in the GLS track & trace mail/SMS or on gls-info.nl.
 
 ## Options
 
-Click **Configure** on the integration card. One form, three sections:
+Click **Configure** on the integration card. One form, four sections:
 
 | Section | Description |
 |---|---|
-| Parcels | Add a parcel by its tracking number (it uses the hub postal code), or remove tracked parcels. Delivered ones stay until you remove them. |
+| Parcels | Add a parcel by its tracking number (it uses the hub postal code), or remove tracked parcels. |
+| Delivered parcels | Keep delivered parcels in the delivered sensor for the last N **days**, or keep only the N most recent (**parcels**). Default: 7 days. Parcels stay tracked — this only controls the sensor. |
 | Parcel history | Add a per-parcel status history attribute. **Off by default.** |
 | Polling | How often GLS is checked: **15 / 30 / 60 / 120 / 240 minutes** (default 30). |
 
@@ -97,18 +101,18 @@ Delete**. Nothing is stored on GLS' side.
 
 ## Sensors
 
-The integration creates one **GLS** device. The entities below show the
-friendly-name pattern:
+Each hub is a **GLS (postcode)** device. The entities below show the
+friendly-name pattern (with multiple hubs each carries its own postcode):
 
 | Friendly name | Description |
 |---|---|
-| `GLS Incoming parcels` | Number of active (not-yet-delivered) tracked parcels |
-| `GLS Parcel <number>` | Canonical status of a single tracked parcel |
-| `GLS Next delivery` | Earliest expected delivery datetime |
-| `GLS En route to ParcelShop` | Active parcels still in transit to a GLS ParcelShop |
-| `GLS Awaiting pickup` | Parcels that have arrived at a ParcelShop and are ready to collect |
-| `GLS Delivered parcels` | Delivered tracked parcels |
-| `GLS Last successful update` | Diagnostic timestamp of the last successful poll |
+| `GLS (postcode) Incoming parcels` | Number of active (not-yet-delivered) tracked parcels |
+| `GLS (postcode) Parcel <number>` | Canonical status of a single tracked parcel |
+| `GLS (postcode) Next delivery` | Earliest expected delivery datetime |
+| `GLS (postcode) En route to ParcelShop` | Active parcels still in transit to a GLS ParcelShop |
+| `GLS (postcode) Awaiting pickup` | Parcels that have arrived at a ParcelShop and are ready to collect |
+| `GLS (postcode) Delivered parcels` | Recently delivered tracked parcels (retention configurable) |
+| `GLS (postcode) Last successful update` | Diagnostic timestamp of the last successful poll |
 
 Every parcel exposed on a sensor attribute uses a carrier-agnostic shape:
 

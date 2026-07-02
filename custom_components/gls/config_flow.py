@@ -18,11 +18,15 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_DELIVERED_FILTER_AMOUNT,
+    CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
     CONF_PARCEL_NO,
     CONF_PARCELS,
     CONF_POSTAL_CODE,
     CONF_REFRESH_INTERVAL,
+    DEFAULT_DELIVERED_FILTER_AMOUNT,
+    DEFAULT_DELIVERED_FILTER_TYPE,
     DEFAULT_INCLUDE_HISTORY,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
@@ -99,7 +103,11 @@ class GlsConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create the GLS hub — only the delivery postal code is needed."""
+        """Create a GLS hub — one per delivery postal code.
+
+        Multiple hubs are allowed (e.g. home + work); each is keyed on its
+        postal code, so the same postcode can only be added once.
+        """
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -107,14 +115,16 @@ class GlsConfigFlow(ConfigFlow, domain=DOMAIN):
             if not valid_postcode(postal_code):
                 errors[CONF_POSTAL_CODE] = "invalid_postcode"
             else:
-                await self.async_set_unique_id(DOMAIN)
+                await self.async_set_unique_id(postal_code)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title="GLS",
+                    title=f"GLS ({postal_code})",
                     data={},
                     options={
                         CONF_PARCELS: [],
                         CONF_POSTAL_CODE: postal_code,
+                        CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
+                        CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
                         CONF_REFRESH_INTERVAL: DEFAULT_REFRESH_INTERVAL,
                         CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
                     },
@@ -145,6 +155,7 @@ class GlsOptionsFlowHandler(OptionsFlow):
 
         if user_input is not None:
             parcels_section = user_input.get("parcels", {})
+            delivered_section = user_input.get("delivered", {})
             history_section = user_input.get("history", {})
             polling_section = user_input.get("polling", {})
 
@@ -169,6 +180,12 @@ class GlsOptionsFlowHandler(OptionsFlow):
                     data={
                         CONF_POSTAL_CODE: hub_postcode,
                         CONF_PARCELS: parcels,
+                        CONF_DELIVERED_FILTER_TYPE: delivered_section[
+                            CONF_DELIVERED_FILTER_TYPE
+                        ],
+                        CONF_DELIVERED_FILTER_AMOUNT: int(
+                            delivered_section[CONF_DELIVERED_FILTER_AMOUNT]
+                        ),
                         CONF_INCLUDE_HISTORY: bool(
                             history_section[CONF_INCLUDE_HISTORY]
                         ),
@@ -200,6 +217,41 @@ class GlsOptionsFlowHandler(OptionsFlow):
             {
                 vol.Required("parcels"): section(
                     vol.Schema(parcels_fields), {"collapsed": False}
+                ),
+                vol.Required("delivered"): section(
+                    vol.Schema(
+                        {
+                            vol.Required(
+                                CONF_DELIVERED_FILTER_TYPE,
+                                default=current.get(
+                                    CONF_DELIVERED_FILTER_TYPE,
+                                    DEFAULT_DELIVERED_FILTER_TYPE,
+                                ),
+                            ): selector.SelectSelector(
+                                selector.SelectSelectorConfig(
+                                    options=[
+                                        selector.SelectOptionDict(value="days", label="Days"),
+                                        selector.SelectOptionDict(
+                                            value="parcels", label="Number of parcels"
+                                        ),
+                                    ],
+                                    mode=selector.SelectSelectorMode.LIST,
+                                )
+                            ),
+                            vol.Required(
+                                CONF_DELIVERED_FILTER_AMOUNT,
+                                default=current.get(
+                                    CONF_DELIVERED_FILTER_AMOUNT,
+                                    DEFAULT_DELIVERED_FILTER_AMOUNT,
+                                ),
+                            ): selector.NumberSelector(
+                                selector.NumberSelectorConfig(
+                                    min=1, max=365, step=1, mode=selector.NumberSelectorMode.BOX
+                                )
+                            ),
+                        }
+                    ),
+                    {"collapsed": True},
                 ),
                 vol.Required("history"): section(
                     vol.Schema(

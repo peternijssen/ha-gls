@@ -2,6 +2,8 @@
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.gls.const import (
+    CONF_DELIVERED_FILTER_AMOUNT,
+    CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
     CONF_PARCEL_NO,
     CONF_PARCELS,
@@ -19,7 +21,7 @@ async def test_user_flow_creates_hub_with_postcode_only(hass):
         result["flow_id"], {CONF_POSTAL_CODE: "1234 ab"}
     )
     assert result["type"] == "create_entry"
-    assert result["title"] == "GLS"
+    assert result["title"] == "GLS (1234AB)"
     assert result["options"][CONF_PARCELS] == []
     assert result["options"][CONF_POSTAL_CODE] == "1234AB"
 
@@ -34,31 +36,54 @@ async def test_user_flow_invalid_postcode(hass):
     assert result["errors"][CONF_POSTAL_CODE] == "invalid_postcode"
 
 
-async def test_only_one_instance_allowed(hass):
-    """single_config_entry aborts a second flow before the form is shown."""
-    MockConfigEntry(domain=DOMAIN, unique_id=DOMAIN).add_to_hass(hass)
+async def test_same_postcode_hub_rejected(hass):
+    """A second hub for the same postcode aborts; the postcode is the key."""
+    MockConfigEntry(domain=DOMAIN, unique_id="1234AB").add_to_hass(hass)
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
     )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_POSTAL_CODE: "1234AB"}
+    )
     assert result["type"] == "abort"
-    assert result["reason"] == "single_instance_allowed"
+    assert result["reason"] == "already_configured"
+
+
+async def test_second_hub_different_postcode_allowed(hass):
+    """A hub for a different postcode is allowed (home + work)."""
+    MockConfigEntry(domain=DOMAIN, unique_id="1234AB").add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_POSTAL_CODE: "5678CD"}
+    )
+    assert result["type"] == "create_entry"
+    assert result["title"] == "GLS (5678CD)"
 
 
 def _hub(parcels: list[dict]) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
-        unique_id=DOMAIN,
+        unique_id="1000AA",
         options={CONF_PARCELS: parcels, CONF_POSTAL_CODE: "1000AA"},
     )
 
 
-def _init_input(*, add="", remove=None, interval="30", history=False) -> dict:
+def _init_input(
+    *, add="", remove=None, interval="30", history=False,
+    filter_type="days", amount=7,
+) -> dict:
     """Build the sectioned options-form submission."""
     parcels: dict = {"add": add}
     if remove is not None:
         parcels["remove"] = remove
     return {
         "parcels": parcels,
+        "delivered": {
+            CONF_DELIVERED_FILTER_TYPE: filter_type,
+            CONF_DELIVERED_FILTER_AMOUNT: amount,
+        },
         "history": {CONF_INCLUDE_HISTORY: history},
         "polling": {CONF_REFRESH_INTERVAL: interval},
     }
@@ -128,13 +153,16 @@ async def test_options_remove_parcel(hass):
     assert nos == {"222222222"}
 
 
-async def test_options_changes_interval_and_history(hass):
+async def test_options_changes_interval_history_and_delivered(hass):
     entry = _hub([])
     entry.add_to_hass(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], _init_input(interval="120", history=True)
+        result["flow_id"],
+        _init_input(interval="120", history=True, filter_type="parcels", amount=5),
     )
     assert result["type"] == "create_entry"
     assert result["data"][CONF_REFRESH_INTERVAL] == 120
     assert result["data"][CONF_INCLUDE_HISTORY] is True
+    assert result["data"][CONF_DELIVERED_FILTER_TYPE] == "parcels"
+    assert result["data"][CONF_DELIVERED_FILTER_AMOUNT] == 5

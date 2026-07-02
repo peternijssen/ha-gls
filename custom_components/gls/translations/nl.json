@@ -19,8 +19,7 @@
       "invalid_postcode": "Voer een geldige Nederlandse postcode in, bijv. 1234AB."
     },
     "abort": {
-      "already_configured": "GLS is al ingesteld. Voeg meer pakketten toe via de opties.",
-      "single_instance_allowed": "GLS is al geconfigureerd. Er wordt maar één instantie ondersteund."
+      "already_configured": "Er is al een GLS-hub voor deze postcode ingesteld."
     }
   },
   "options": {
@@ -36,6 +35,17 @@
             },
             "data_description": {
               "add": "Voer een GLS-pakketnummer of tracking-ID in om het te volgen. Gebruikt de hub-postcode."
+            }
+          },
+          "delivered": {
+            "name": "Bezorgde pakketten",
+            "data": {
+              "delivered_filter_type": "Bewaren op",
+              "delivered_filter_amount": "Aantal"
+            },
+            "data_description": {
+              "delivered_filter_type": "Toon bezorgde pakketten van de laatste X dagen, of bewaar alleen de X meest recente.",
+              "delivered_filter_amount": "Aantal dagen of pakketten om te tonen. De pakketten blijven gevolgd; dit bepaalt alleen de bezorgde-sensor."
             }
           },
           "history": {
@@ -75,7 +85,7 @@
         },
         "postal_code": {
           "name": "Postcode",
-          "description": "Bezorgpostcode. Standaard de hub-postcode als je 'm weglaat."
+          "description": "Bezorgpostcode. Kiest de hub als er meerdere zijn; anders standaard de enige hub."
         }
       }
     },

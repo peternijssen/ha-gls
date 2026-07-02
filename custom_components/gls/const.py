@@ -48,6 +48,13 @@ CONF_PARCELS = "parcels"
 CONF_PARCEL_NO = "parcel_no"
 CONF_POSTAL_CODE = "postal_code"
 
+# Delivered-parcels retention: keep delivered parcels visible for the last N
+# days, or keep only the N most recent — mirrors the other suite carriers.
+CONF_DELIVERED_FILTER_TYPE = "delivered_filter_type"
+CONF_DELIVERED_FILTER_AMOUNT = "delivered_filter_amount"
+DEFAULT_DELIVERED_FILTER_TYPE = "days"
+DEFAULT_DELIVERED_FILTER_AMOUNT = 7
+
 # Refresh interval (minutes) controls how often the coordinator polls GLS.
 # Default 30 min keeps the load on the public endpoint gentle; the minimum
 # is 15 min for the same reason. Kept identical to the other suite carriers.

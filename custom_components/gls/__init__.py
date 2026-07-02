@@ -4,12 +4,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import GlsApiClient
-from .const import PLATFORMS
+from .const import DOMAIN, PLATFORMS
 from .coordinator import GlsCoordinator, _refresh_interval
 from .services import async_setup_services, async_unload_services
 
@@ -57,9 +57,14 @@ async def _async_options_updated(hass: HomeAssistant, entry: GlsConfigEntry) -> 
 
 async def async_unload_entry(hass: HomeAssistant, entry: GlsConfigEntry) -> bool:
     """Unload a GLS config entry."""
-    if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        # Single-entry integration: no other entry can still need the
-        # services, so remove them alongside the entry.
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
+    # The services are shared across hubs, so only remove them once the last
+    # hub is gone — otherwise unloading one hub would break the others.
+    others_loaded = any(
+        other.entry_id != entry.entry_id and other.state is ConfigEntryState.LOADED
+        for other in hass.config_entries.async_entries(DOMAIN)
+    )
+    if not others_loaded:
         async_unload_services(hass)
-        return True
-    return False
+    return True

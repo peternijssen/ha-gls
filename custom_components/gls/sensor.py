@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import GlsConfigEntry
-from .const import DOMAIN, ParcelStatus
+from .const import CONF_POSTAL_CODE, DOMAIN, ParcelStatus
 from .coordinator import GlsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,10 +31,16 @@ PARALLEL_UPDATES = 0
 
 
 def _build_device_info(entry: ConfigEntry) -> DeviceInfo:
-    """Return the DeviceInfo shared by every entity for this GLS hub."""
+    """Return the DeviceInfo shared by every entity for this GLS hub.
+
+    The postal code is part of the device name so multiple hubs (e.g. home
+    and work) stay distinguishable — mirroring the account-in-name pattern
+    of the other carriers.
+    """
+    postal_code = entry.options.get(CONF_POSTAL_CODE, "")
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name="GLS",
+        name=f"GLS ({postal_code})" if postal_code else "GLS",
         manufacturer="GLS",
         entry_type=DeviceEntryType.SERVICE,
         configuration_url="https://gls-group.com",

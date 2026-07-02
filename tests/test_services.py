@@ -88,6 +88,53 @@ async def test_track_parcel_duplicate_is_noop(hass):
     assert len(entry.options[CONF_PARCELS]) == 1
 
 
+async def _setup_hub(hass, postcode: str) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=postcode,
+        options={CONF_PARCELS: [], CONF_POSTAL_CODE: postcode},
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.gls.api.GlsApiClient.async_get_parcel",
+        new=AsyncMock(return_value=_SAMPLE),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    return entry
+
+
+async def test_track_parcel_routes_to_hub_by_postcode(hass):
+    home = await _setup_hub(hass, "1000AA")
+    work = await _setup_hub(hass, "2000BB")
+
+    with patch(
+        "custom_components.gls.api.GlsApiClient.async_get_parcel",
+        new=AsyncMock(return_value=_SAMPLE),
+    ):
+        await hass.services.async_call(
+            DOMAIN,
+            "track_parcel",
+            {CONF_PARCEL_NO: "9999999999999", CONF_POSTAL_CODE: "2000BB"},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert home.options[CONF_PARCELS] == []
+    assert work.options[CONF_PARCELS] == [
+        {CONF_PARCEL_NO: "9999999999999", CONF_POSTAL_CODE: "2000BB"}
+    ]
+
+
+async def test_track_parcel_ambiguous_without_postcode(hass):
+    await _setup_hub(hass, "1000AA")
+    await _setup_hub(hass, "2000BB")
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN, "track_parcel", {CONF_PARCEL_NO: "9999999999999"}, blocking=True
+        )
+
+
 async def test_untrack_parcel_removes_from_options(hass):
     entry = MockConfigEntry(
         domain=DOMAIN,
