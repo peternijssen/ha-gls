@@ -33,6 +33,7 @@ from .const import (
     DEFAULT_INCLUDE_HISTORY,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
+    NEW_COUNTRY_ISSUE_URL,
     REFRESH_INTERVAL_OPTIONS,
 )
 
@@ -155,7 +156,10 @@ class GlsConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user", data_schema=_HUB_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=_HUB_SCHEMA,
+            errors=errors,
+            description_placeholders={"issue_url": NEW_COUNTRY_ISSUE_URL},
         )
 
 

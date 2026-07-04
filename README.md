@@ -3,8 +3,6 @@
 [![Release](https://img.shields.io/github/v/release/peternijssen/ha-gls.svg)](https://github.com/peternijssen/ha-gls/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Downloads](https://img.shields.io/github/downloads/peternijssen/ha-gls/total.svg)](https://github.com/peternijssen/ha-gls/releases)
-
 A custom Home Assistant integration that tracks your GLS parcels in the
 Netherlands. No GLS account is needed — you enter the tracking number and
 delivery postal code yourself, just like the gls-info.nl website.
