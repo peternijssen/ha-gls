@@ -158,6 +158,13 @@ enters tracking codes themselves, so:
   succeeded** (or nothing is tracked). A poll served entirely from
   `_raw_cache` is not a success — the diagnostic sensor exists precisely
   to reveal that situation.
+- **First refresh runs in `__init__.py`, before `async_forward_entry_setups`**
+  — `async_setup_entry` awaits `coordinator.async_config_entry_first_refresh()`
+  before forwarding (not in the `sensor.py` platform). Raising
+  `ConfigEntryNotReady` from a *forwarded* platform is too late for HA to
+  catch — it logs a warning and half-sets-up the entry. Doing the first
+  refresh here lets the `UpdateFailed`-on-total-failure case fail the whole
+  entry so HA retries with backoff. Do not move it back into a platform.
 
 ## Entities (same set as DHL, entry-scoped)
 

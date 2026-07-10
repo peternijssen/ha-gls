@@ -53,9 +53,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up GLS sensor entities from a config entry."""
+    # The coordinator is already refreshed by __init__.py before platforms are
+    # forwarded, so ConfigEntryNotReady is raised from the entry setup rather
+    # than (too late) from this forwarded platform.
     coordinator = entry.runtime_data.coordinator
-
-    await coordinator.async_config_entry_first_refresh()
 
     current_barcodes: set[str] = {
         p.get("barcode", "") for p in coordinator.data or []

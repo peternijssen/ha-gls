@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.gls.api import GlsApiError
 from custom_components.gls.const import (
     CONF_PARCEL_NO,
     CONF_PARCELS,
@@ -48,6 +49,30 @@ async def test_setup_and_unload(hass):
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_setup_retries_when_first_refresh_fails(hass):
+    """When the first data fetch fails, setup retries from the entry itself.
+
+    The first refresh runs in __init__.py before platforms are forwarded, so a
+    failure raises ConfigEntryNotReady from the entry setup (SETUP_RETRY) rather
+    than — too late — from a forwarded platform.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=DOMAIN,
+        options={CONF_PARCELS: [{CONF_PARCEL_NO: "0085105093278", CONF_POSTAL_CODE: "1234AB"}]},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.gls.api.GlsApiClient.async_get_parcel",
+        new=AsyncMock(side_effect=GlsApiError("GLS unreachable")),
+    ):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_RETRY
 
 
 async def test_per_parcel_sensor_spawn_and_remove(hass):
