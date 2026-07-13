@@ -6,9 +6,7 @@
 
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-A custom Home Assistant integration that tracks your GLS parcels in the
-Netherlands. No GLS account is needed — you enter the tracking number and
-delivery postal code yourself, just like the gls-info.nl website.
+A custom Home Assistant integration that tracks your GLS parcels in the Netherlands. No GLS account is needed — you enter the tracking number and delivery postal code yourself, just like the gls-info.nl website.
 
 ## Contents
 
