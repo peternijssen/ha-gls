@@ -195,6 +195,13 @@ Ready-to-paste automations and dashboard snippets live in
 [`examples/`](examples/), including a [card that adds a parcel from a
 dashboard](examples/dashboards/add_parcel_card.yaml).
 
+### Community Lovelace cards
+
+Third-party cards that work with this integration's sensors:
+
+- [jonisnet/hki-parcels-card](https://github.com/jonisnet/hki-parcels-card)
+- [klaptafel/ha-package-tracker-card](https://github.com/klaptafel/ha-package-tracker-card)
+
 ## Debugging
 
 To capture the raw GLS API response, enable debug logging:
@@ -219,15 +226,13 @@ button), and check **Settings → System → Logs**.
 
 ## Related integrations
 
-Tracking parcels from other Dutch carriers:
+This integration is part of [**ha-parcel-integrations**](https://github.com/ha-parcel-integrations) — a family of Dutch
+parcel-carrier integrations that all publish the same canonical parcel format,
+statuses and events.
 
-| Integration | Description |
-|---|---|
-| [ha-dhl-nl](https://github.com/ha-parcel-integrations/ha-dhl-nl) | DHL eCommerce NL parcel tracker. |
-| [ha-dpd](https://github.com/ha-parcel-integrations/ha-dpd) | DPD parcel tracker. |
-| [ha-postnl](https://github.com/ha-parcel-integrations/ha-postnl) | PostNL parcel tracker. |
-| [ha-dragonfly](https://github.com/ha-parcel-integrations/ha-dragonfly) | Dragonfly Shipping parcel tracker — no account, you enter tracking numbers yourself. |
-| [ha-parcel-aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) | Rolls up counts and next-delivery timestamps from all installed carrier integrations into a single set of sensors. |
+- [**Parcel Aggregator**](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) rolls every installed carrier
+  up into one set of sensors.
+- Browse [the organisation](https://github.com/ha-parcel-integrations) for the current list of supported carriers.
 
 ## Disclaimer
 
