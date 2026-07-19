@@ -1,0 +1,51 @@
+name: 🏷️ Unrecognised parcel status
+description: The integration logged a warning about a GLS state it does not know yet.
+title: "[status] "
+labels: ["unrecognised-status"]
+assignees:
+  - peternijssen
+body:
+  - type: markdown
+    attributes:
+      value: |
+        GLS reports a parcel's stage as a **number** (`state`). The known ones
+        are mapped; anything else is reported as `unknown` rather than guessed,
+        and logs a warning like:
+
+        ```
+        Unrecognised GLS state — help us map it. Open an issue and paste
+        this line: …
+          state=7 → reported as 'unknown'
+        ```
+
+        Paste that line below and it gets mapped. **No personal data is
+        involved** — just the number.
+  - type: textarea
+    id: logline
+    attributes:
+      label: The log line
+      description: Copy the full "help us map it" warning from your Home Assistant log.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: actual_state
+    attributes:
+      label: What was the parcel actually doing at that moment?
+      description: |
+        This is the important part — the number alone does not tell us what it
+        means. E.g. "waiting at a ParcelShop", "the driver was on the way",
+        "delivery failed, nobody home", "on its way back to the sender".
+      placeholder: "e.g. ready for collection at a ParcelShop"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: "e.g. 1.2.0"
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "e.g. 2026.7.0"
